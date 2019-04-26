@@ -44,9 +44,22 @@ show_img("vertical", lines_vertical)
 img_grid = lines_vertical + lines_horizontal
 show_img("grid", img_grid)
 
+# 方案一： 依据连通域定位原始图像
+
+# 方案二： 找到网格图的轮廓 【直线拟合？】
+contours, hierarchy = cv.findContours(img_grid, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+print(contours)
+print(len(contours))
+img_contours = cv.drawContours(img, contours, -1, (0, 0, 200), 5)
+show_img("contours", img_contours)
+
+# 方案三： 先按行分割，再按列分割
+
+# img_distance = cv.distanceTransform(img_grid, cv.)
+
 # 得到横纵直线的交点
-img_dots = cv.bitwise_and(lines_vertical, lines_horizontal)
-show_img("dots", img_dots)
+# img_dots = cv.bitwise_and(lines_vertical, lines_horizontal)
+# show_img("dots", img_dots)
 
 cv.waitKey(0)
 
