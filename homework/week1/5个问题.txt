@@ -1,0 +1,19 @@
+2.1 What do you want to get in this course?
+
+Answer: 我想学习CV相关技术，提升自身技能
+
+2.2 What problems do you want to solve?
+
+Answer: 目前从事医疗影像相关的开发工作，希望可以解决一些图像分割和目标检测的问题（目前主要是肿瘤）
+
+2.3 What advantages do you have to accomplish your goal?
+
+Answer: 我很有毅力和对此很有兴趣
+
+2.4 What disadvantages you need to overcome to accomplish your goal?
+
+Answer:之前零零散散地学习过一些，也没有阅读过论文，缺乏理论基础
+
+2.5 How will you plan to study in this course?
+
+Answer: 跟上老师的步伐，进行充足的实战，巩固知识
