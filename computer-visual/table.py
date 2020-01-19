@@ -10,7 +10,7 @@ def show_img(name: str, img: np.ndarray):
     cv.imshow(name, img)
 
 
-img_path = "../data/img/table1.jpg"
+img_path = "../data/img/lenna.jpg"
 img = cv.imread(img_path)
 show_img("raw", img)
 
