@@ -18,6 +18,7 @@ def color_shift():
     shift_size = 40
     b_lim = 255 - shift_size
     r, g, b = cv.split(img)
+    # split函数返回的通道顺序就是传入图像的通道顺序（ndarray对象并不带有顺序信息）
     # b1, g1, r1 = cv.split(img_gbr)
     b[b > b_lim] = 255
     b[b <= b_lim] = b[b <= b_lim] + shift_size
@@ -25,7 +26,6 @@ def color_shift():
     return img_shift
 
 
-#
 def rotation():
     mat = cv.getRotationMatrix2D((img.shape[0] / 2, img.shape[1] / 2), 70, 1)
     return cv.warpAffine(img, mat, dsize=(img.shape[0], img.shape[1]))
