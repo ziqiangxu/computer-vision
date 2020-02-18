@@ -5,6 +5,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import sys
+
+MIN_FLOAT = sys.float_info.min
+MAX_FLOAT = sys.float_info.max
+
+
+def remove_inf(data) -> np.ndarray:
+    data[data == np.inf] = MAX_FLOAT
+    data[data == -np.inf] = MIN_FLOAT
+    return data
 
 
 def gen_sample_data():
@@ -65,6 +75,9 @@ def inference(x: np.ndarray, w: np.ndarray) -> np.ndarray:
     z = w.T.dot(x)
     # return 1 / (1 + np.math.e**(-z))
     pre_y = 1 / (1 + np.exp(-z))
+
+    pre_y[pre_y==0] = MIN_FLOAT
+    pre_y[pre_y==1] = 1 - MIN_FLOAT
     return pre_y
 
 
@@ -75,11 +88,10 @@ def loss_fun(index: float, gt: int) -> float:
     :return:
     """
     # # 如果index逼近0，则为0类型，那么其损失为0，---即取1的对数
-    min_f = 10E-10
     if index == 0.0:
-        index = min_f
+        index = MIN_FLOAT
     elif index == 1.0:
-        index = 1 - min_f
+        index = 1 - MIN_FLOAT
     # if gt == 0:
     #     try:
     #         return -np.math.log(1 - index, np.math.e)
@@ -104,11 +116,13 @@ def cal_step_gradient(x: np.ndarray, gt: np.ndarray,
     :return:
     """
     indexes = inference(x, w)
-
-    # 对损失函数求导的计算方式
+    #
+    # # 对损失函数求导的计算方式, 没有化简，计算容易超出计算机计算范围
     # e = np.math.e
-    # d_index: np.ndarray = -(indexes**2) * (e**(-w.dot(x))) * x
-    # dw_total: np.ndarray = (gt - 1) * d_index / (1 - indexes) - gt * d_index / indexes
+    # d_index: np.ndarray = -1/(indexes * indexes) * (e ** (-w.dot(x))) * x
+    # d_index = remove_inf(d_index)
+    # dw_total: np.ndarray = (gt - 1) * (-d_index) / (1 - indexes) - gt * d_index / indexes
+    # dw_total = remove_inf(dw_total)
     # return w - dw_total.mean(axis=1) * lr
 
     # 优秀作业的梯度计算方式（有疑问）
@@ -136,15 +150,19 @@ def train(data: np.ndarray, ground_truth: np.ndarray,
 #         x_points = np.linspace(0, 30)
 #         y_points = x_points*w[0] + w[1]
         step = max_iterations // 10
-        if (i+1) % step == 0:
+        def log():
             indexes = inference(batch_data, w)
             # print(batch_truth)
             loss = np.vectorize(loss_fun)(indexes, batch_truth).mean()
             print('iterator: {}, weights: {}, loss:{}'.format(i, w, loss))
+        if step == 0:
+            log()
+        elif (i+1) % step == 0:
+            log()
     return w
 
 
-weights = train(points[:3], points[3], 1000, 0.1, 10000)
+weights = train(points[:3], points[3], 1000, 0.1, 5)
 
 # 0类别
 p0 = a[:, :10]
