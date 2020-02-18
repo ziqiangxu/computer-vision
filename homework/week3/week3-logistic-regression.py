@@ -8,29 +8,37 @@ import random
 
 
 def gen_sample_data():
-    num = 30
+    num = 60
     center_a = np.random.randint(1, 10, 2) + np.random.random(2)
     angle = random.random() * np.pi
     # a, b中心点距离为10
-    # center_b = np.array([center_a[0] + np.cos(angle) * 15,
-    #                      center_a[1] + np.sin(angle) * 15])
-    center_b = np.random.randint(15, 25, 2) + np.random.random(2)
+    center_b = np.array([center_a[0] + np.cos(angle) * 10,
+                         center_a[1] + np.sin(angle) * 10])
+    # center_b = np.random.randint(15, 25, 2) + np.random.random(2)
     # center_a = np.array([5, 15])
     # center_b = np.array([15, 3])
     print('center point of a: {}, b:{}'.format(center_a, center_b))
-        
-    points_a = np.array([np.random.randint(-5, 5, num) + np.random.random(num),
-                         np.random.randint(-5, 5, num) + np.random.random(num)])
+
+    max_radius = 5
+    a_x = np.random.randint(-max_radius, max_radius, num) + np.random.random(num)
+    a_y = np.random.randint(-max_radius, max_radius, num) + np.random.random(num)
+    points_a = np.array([a_x,
+                         a_y])
     points_a += center_a.reshape((2, 1))
+    # 添加分量3，常数1
     const = np.ones((1, num), dtype=np.int8)
     points_a = np.vstack((points_a, const))
+    # 添加类型
     type_a = np.zeros((1, num), dtype=np.int8)
     points_a = np.vstack((points_a, type_a))
-    
-    points_b = np.array([np.random.randint(-5, 5, num) + np.random.random(num),
-                         np.random.randint(-5, 5, num) + np.random.random(num)])
+
+    b_x = np.random.randint(-max_radius, max_radius, num) + np.random.random(num)
+    b_y = np.random.randint(-max_radius, max_radius, num) + np.random.random(num)
+    points_b = np.array([b_x, b_y])
     points_b += center_b.reshape((2, 1))
+    # 添加分量3，常数1
     points_b = np.vstack((points_b, const))
+    # 添加类型
     type_b = np.ones((1, num), dtype=np.int8)
     points_b = np.vstack((points_b, type_b))
     return points_a, points_b
@@ -45,9 +53,7 @@ plt.scatter(points[0], points[1])
 # plt.show()
 
 
-# ## 模型
-
-
+# 模型 sigmoid函数
 def inference(x: np.ndarray, w: np.ndarray) -> np.ndarray:
     """
     :param x: 数据
@@ -55,6 +61,7 @@ def inference(x: np.ndarray, w: np.ndarray) -> np.ndarray:
     :return: (0, 1)的值
     """
 #     print(x.shape, w.shape)
+    # 用线分割开两团点, 线的方程: w1*x1 + w2*x2 + b = 0
     z = w.T.dot(x)
     # return 1 / (1 + np.math.e**(-z))
     pre_y = 1 / (1 + np.exp(-z))
@@ -160,7 +167,7 @@ print("loss0:", loss_0)
 print("loss1:", loss_1)
 
 # 绘制分界线
-x_axe = np.linspace(points[0].min() * 0.9, points[1].max() * 1.1, 100)
+x_axe = np.linspace(points[0].min() * 0.9, points[0].max() * 1.1, 100)
 y_axe = -(x_axe * weights[0] + weights[2]) / weights[1]
 plt.plot(x_axe, y_axe)
 
