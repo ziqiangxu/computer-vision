@@ -8,29 +8,30 @@ import random
 
 
 def gen_sample_data():
+    num = 30
     center_a = np.random.randint(1, 10, 2) + np.random.random(2)
     angle = random.random() * np.pi
     # a, b中心点距离为10
-    center_b = np.array([center_a[0] + np.cos(angle) * 10,
-                         center_a[1] + np.sin(angle) * 10])
-    # center_b = np.random.randint(15, 25, 2) + np.random.random(2)
+    # center_b = np.array([center_a[0] + np.cos(angle) * 15,
+    #                      center_a[1] + np.sin(angle) * 15])
+    center_b = np.random.randint(15, 25, 2) + np.random.random(2)
     # center_a = np.array([5, 15])
     # center_b = np.array([15, 3])
     print('center point of a: {}, b:{}'.format(center_a, center_b))
         
-    points_a = np.array([np.random.randint(-5, 5, 30) + np.random.random(30), 
-                         np.random.randint(-5, 5, 30) + np.random.random(30)])
+    points_a = np.array([np.random.randint(-5, 5, num) + np.random.random(num),
+                         np.random.randint(-5, 5, num) + np.random.random(num)])
     points_a += center_a.reshape((2, 1))
-    const = np.zeros((1, 30), dtype=np.int8)
+    const = np.ones((1, num), dtype=np.int8)
     points_a = np.vstack((points_a, const))
-    type_a = np.zeros((1, 30), dtype=np.int8)
+    type_a = np.zeros((1, num), dtype=np.int8)
     points_a = np.vstack((points_a, type_a))
     
-    points_b = np.array([np.random.randint(-5, 5, 30) + np.random.random(30), 
-                         np.random.randint(-5, 5, 30) + np.random.random(30)])
+    points_b = np.array([np.random.randint(-5, 5, num) + np.random.random(num),
+                         np.random.randint(-5, 5, num) + np.random.random(num)])
     points_b += center_b.reshape((2, 1))
     points_b = np.vstack((points_b, const))
-    type_b = np.ones((1, 30), dtype=np.int8)
+    type_b = np.ones((1, num), dtype=np.int8)
     points_b = np.vstack((points_b, type_b))
     return points_a, points_b
 
@@ -40,25 +41,27 @@ def gen_sample_data():
 
 a, b = gen_sample_data()
 points = np.concatenate((a, b), axis=1)
-# plt.scatter(points[0], points[1])
+plt.scatter(points[0], points[1])
 # plt.show()
 
 
 # ## 模型
 
 
-def inference(x: np.ndarray, w: np.ndarray):
+def inference(x: np.ndarray, w: np.ndarray) -> np.ndarray:
+    """
+    :param x: 数据
+    :param w: 参数（权重）
+    :return: (0, 1)的值
+    """
 #     print(x.shape, w.shape)
     z = w.T.dot(x)
-    return 1 / (1 + np.math.e**(-z))
-
-# inference(np.array([[1,2], [3,4]]), np.array([3,4]))
-
-
-# ## 损失函数
+    # return 1 / (1 + np.math.e**(-z))
+    pre_y = 1 / (1 + np.exp(-z))
+    return pre_y
 
 
-def loss_fun(index, gt):
+def loss_fun(index: float, gt: int) -> float:
     """
     :param index: 指标，值在(0， 1)区间
     :param gt: 真实值0或者1
@@ -96,17 +99,23 @@ def cal_step_gradient(x: np.ndarray, gt: np.ndarray,
     indexes = inference(x, w)
 
     # 对损失函数求导的计算方式
-    e = np.math.e
-    d_index: np.ndarray = -(indexes**2) * (e**(-w.dot(x))) * x
-    dw_total: np.ndarray = (gt - 1) * d_index / (1 - indexes) - gt * d_index / indexes
-    return w - dw_total.mean(axis=1) * lr
+    # e = np.math.e
+    # d_index: np.ndarray = -(indexes**2) * (e**(-w.dot(x))) * x
+    # dw_total: np.ndarray = (gt - 1) * d_index / (1 - indexes) - gt * d_index / indexes
+    # return w - dw_total.mean(axis=1) * lr
 
     # 优秀作业的梯度计算方式（有疑问）
     # res = x.dot(indexes - gt) / len(x[0])
     # return w - res * lr
 
+    # week4讲作业
+    diff = indexes - gt
+    dw = x.dot(diff) / len(x[0])
+    w -= dw * lr
+    return w
 
-def train(data: np.ndarray, ground_truth:np.ndarray,
+
+def train(data: np.ndarray, ground_truth: np.ndarray,
           batch_size: int, learning_rate=0.1, max_iterations=30):
     w = np.zeros(len(data))
     # w = np.random.random(len(data))
@@ -128,7 +137,7 @@ def train(data: np.ndarray, ground_truth:np.ndarray,
     return w
 
 
-weights = train(points[:3], points[3], 10, 0.01, 1000)
+weights = train(points[:3], points[3], 1000, 0.1, 10000)
 
 # 0类别
 p0 = a[:, :10]
@@ -149,6 +158,11 @@ loss_1 = [round(loss_fun(r, 1), 4) for r in res1]
 print("res1:", res1)
 print("loss0:", loss_0)
 print("loss1:", loss_1)
+
+# 绘制分界线
+x_axe = np.linspace(points[0].min() * 0.9, points[1].max() * 1.1, 100)
+y_axe = -(x_axe * weights[0] + weights[2]) / weights[1]
+plt.plot(x_axe, y_axe)
 
 plt.scatter(p0[0], p0[1])
 plt.scatter(p1[0], p1[1])
