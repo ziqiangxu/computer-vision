@@ -33,8 +33,8 @@ class ObjectDetector:
 
         kp_target, des_target = self.sift.detectAndCompute(target_img_gray, None)
 
-        # todo 比对特征点
-        FLANN_INDEX_KDTREE = 1
+        # 用cv的knn来对关键点进行匹配
+        FLANN_INDEX_KDTREE = 1  # 指定使用的算法
         index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
         search_params = dict(checks=50)
         flann = cv.FlannBasedMatcher(index_params, search_params)
@@ -45,7 +45,6 @@ class ObjectDetector:
             if m.distance < 0.7 * n.distance:
                 good.append(m)
 
-        # todo connect the keypoints
         if len(good) < self.MIN_MATCH_COUNT:
             raise Exception(f'Not enough matches are found: {len(good)}/{self.MIN_MATCH_COUNT}')
         print(f'matches are found: {len(good)}/{self.MIN_MATCH_COUNT}')
@@ -54,9 +53,9 @@ class ObjectDetector:
         # points 的shape
         target_pts = np.float32([kp_target[m.trainIdx].pt for m in good]).reshape([-1, 1, 2])
 
-        # todo RANSAC 算法
+        # RANSAC 算法选点，减小噪声数据的干扰
         # trans_matrix, mask = cv.findHomography(src_pts, target_pts, cv.RANSAC, 5.0)
-        trans_matrix, mask = cv.findHomography(src_pts, target_pts, cv.RANSAC, 5, confidence=0.997)
+        trans_matrix, mask = cv.findHomography(src_pts, target_pts, cv.RANSAC, 5.0, maxIters=5000)
 
         matches_mask = mask.ravel().tolist()
 
@@ -86,28 +85,28 @@ class ObjectDetector:
 
 
 if __name__ == '__main__':
-    # 汽车，query从target
-    # object_detector = ObjectDetector('query1.png')
-    # res_img = object_detector.detect('target1.jpeg', True)
-    # show_img(res_img)
+    # # 汽车，query从target
+    object_detector = ObjectDetector('query1.png')
+    res_img = object_detector.detect('target1.jpeg', True)
+    show_img(res_img)
 
-    # 温度计 手机拍摄 效果不好
+    # 温度计 手机拍摄 效果不好，匹配到的特征点比较少
     # object_detector = ObjectDetector('query2-camera.jpg')
     # res_img = object_detector.detect('target2.jpeg', True)
     # show_img(res_img)
 
-    # 板凳， query为从target图像中截取并经过仿射变换
-    # object_detector = ObjectDetector('query3.png')
-    # res_img = object_detector.detect('target3.jpeg', True)
-    # show_img(res_img)
+    # # 板凳， query为从target图像中截取并经过仿射变换
+    object_detector = ObjectDetector('query3.png')
+    res_img = object_detector.detect('target3.jpeg', True)
+    show_img(res_img)
 
     object_detector = ObjectDetector('query3-camera.jpeg')
     res_img = object_detector.detect('target3.jpeg', True)
     show_img(res_img)
 
-    # 手写文字， query为手机拍摄
-    # object_detector = ObjectDetector('query4-camera.jpeg')
-    # res_img = object_detector.detect('target4.jpg', True)
-    # show_img(res_img)
+    # # 手写文字， query为手机拍摄
+    object_detector = ObjectDetector('query4-camera.jpeg')
+    res_img = object_detector.detect('target4.jpg', True)
+    show_img(res_img)
 
     # 对于查询图片，在以下条件下检测效果好：有复杂纹理，图片由严格的仿射变换获得。
