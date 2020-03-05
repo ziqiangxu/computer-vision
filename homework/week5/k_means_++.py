@@ -51,11 +51,12 @@ class KMeans:
         delta = a - b
         return (delta ** 2).sum()
 
-    def start(self, k: int, plus_algorithm: bool = False):
+    def start(self, k: int, plus_algorithm: bool = False, max_iterator: int = 1000):
         """
         start k means
         :param k:
         :param plus_algorithm:
+        :param max_iterator:
         :return:
         """
         data_length = len(self.data)
@@ -67,9 +68,28 @@ class KMeans:
             ids = np.random.choice(data_length, k, False)
             self.centers = self.data[ids][:]
 
-        # todo 在中心点基本不变的时候不再更新
-        for i in range(2):
-            self.centers = self.compute_centers()
+        num = 0
+        for i in range(max_iterator):
+            num += 1
+            new_centers = self.compute_centers()
+            if self.is_center_keep(self.centers[:, :-1], new_centers[:, :-1]):
+                # 中心点不发生变化，结束计算
+                break
+            # 更新中心点
+            self.centers = new_centers
+        print(f'{num} times computed')
+
+    @staticmethod
+    def is_center_keep(old_centers: np.ndarray, new_centers: np.ndarray, decimals: int = 3):
+        """
+        :param old_centers:
+        :param new_centers:
+        :param decimals:
+        :return:
+        """
+        old = np.round(old_centers, decimals)
+        new = np.round(new_centers, decimals)
+        return (old == new).all()
 
     @staticmethod
     def compute_cluster_center(points: np.ndarray):
@@ -92,7 +112,7 @@ class KMeans:
         for point in data:
             distance = np.zeros(k)
             for i in range(k):
-                distance[i] = self.compute_distance(point, centers[i])
+                distance[i] = self.compute_distance(point[:-1], centers[i, :-1])
                 # 计算出距离最小的中心点，判断所属的类别，并保存到data
                 min_index = np.argmin(distance)
                 point[-1] = min_index
@@ -117,11 +137,11 @@ if __name__ == '__main__':
                                          [5, 8, 5], 100)
     # mock_data = KMeans.get_mock_data([[10, 10], [20, 30]],
     #                                  [5, 8], 100)
-    print(mock_data)
+    # print(mock_data)
     # plt.scatter(mock_data[:, 0], mock_data[:, 1])
 
     k_means = KMeans(mock_data)
     k_means.start(3)
-    print(mock_data)
+    # print(mock_data)
     k_means.show_2d()
     # plt.show()
