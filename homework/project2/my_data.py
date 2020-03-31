@@ -10,9 +10,11 @@ TRAIN_BOARDER = 112
 
 
 def get_data(normalize=True) -> tuple:
-    # todo complete the data
     with open('train.txt', 'r') as f:
         lines = f.readlines()
+    faces_num = len(lines)
+    # 2 valid 8 train
+    valid_num = faces_num // 5
 
     if normalize:
         tsfm = transforms.Compose([
@@ -21,7 +23,8 @@ def get_data(normalize=True) -> tuple:
     else:
         tsfm = transforms.Compose([ToTensor()])
 
-    return FaceLandmarksDataset(lines, tsfm), None
+    return (FaceLandmarksDataset(lines[valid_num:], tsfm),
+            FaceLandmarksDataset(lines[:valid_num], tsfm))
 
 
 def parse_line(line):
@@ -75,10 +78,10 @@ class ToTensor(object):
     """
     def __call__(self, sample):
         image, landmarks = sample['image'], sample['landmarks']
-        # todo swap color axis because
+        # swap color axis because
         # numpy image: H x W x C
         # torch image: C X H X W
-        image = image.transpose((2, 0, 1))
+        # image = image.transpose((2, 0, 1))
         image = np.expand_dims(image, axis=0)
         return {'image': torch.from_numpy(image),
                 'landmarks': torch.from_numpy(landmarks)}
@@ -102,7 +105,7 @@ class FaceLandmarksDataset(Dataset):
         img_name, rect, landmarks = parse_line(self.lines[idx])
         # image
         # img = Image.open(img_name).convert('L')
-        img = cv.imread(img_name)
+        img = cv.imread(img_name, 0)
         # img = Image.open(img_name)
 
         # img_crop = img.crop(tuple(rect))
@@ -137,12 +140,6 @@ class FaceLandmarksDataset(Dataset):
         sample = {'image': img_crop, 'landmarks': landmarks}
         sample = self.transform(sample)
         return sample
-
-
-def get_train_test_set():
-    dataset_train = None
-    dataset_test = None
-    return dataset_train, dataset_test
 
 
 if __name__ == '__main__':
