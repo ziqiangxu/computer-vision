@@ -5,7 +5,11 @@ from torch.utils.data.dataloader import DataLoader
 import argparse
 import my_data as data
 import os
+import matplotlib.pyplot as plt
+
+
 torch.set_default_tensor_type(torch.FloatTensor)
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -82,7 +86,6 @@ def train(
     args, train_data_loader: DataLoader, valid_data_loader: DataLoader, model: Net,
     criterion, optimizer: optim.Optimizer, device
 ):
-    print(f'batch-size:{args.batch_size}, log-interval:{args.log_interval}')
     # save model
     if args.save_model:
         if not os.path.exists(args.save_directory):
@@ -160,10 +163,49 @@ def train(
         print('====================================================')
         if args.save_model:
             saved_model_name = os.path.join(args.save_directory, 
+            # f'detector_epoch_{epoch_id}_{train_mean_pts_loss}_{valid_mean_pts_loss}.pt')
             f'detector_epoch_{epoch_id}.pt')
             torch.save(model.state_dict(), saved_model_name)
+        draw_loss(train_losses, valid_losses, args.phase)
 
     return train_losses, valid_losses
+
+
+def model_test(model: Net, test_dataset, device, criterion):
+    """
+
+    :param model:
+    :param test_dataset:
+    :param device:
+    :param criterion:
+    :return:
+    """
+    mean_loss = 0
+    model.eval()
+    batch_cnt = 0
+    for batch_idx, batch in enumerate(test_dataset):
+        img: torch.Tensor = batch['image']
+        landmarks: torch.Tensor = batch['landmarks']
+        img = img.to(device)
+        landmarks = landmarks.to(device)
+
+        output = model.forward(img)
+        loss = criterion(output, landmarks)
+        mean_loss += loss.item()
+        batch_cnt += 1
+        print(f'loss in batch {batch_idx}: {loss.item()}')
+    mean_loss = mean_loss / batch_cnt
+    return mean_loss
+
+
+def draw_loss(train_losses, valid_losses, prefix):
+    plt.cla()
+    fig, ax = plt.subplots()
+    ax.plot(train_losses, label='train_losses')
+    ax.plot(valid_losses, label='valid_losses')
+    ax.legend()
+    fig.savefig(f'log/{prefix}_losses.png')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detector')
@@ -186,7 +228,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--phase', type=str, default='Train',   # Train/train, Predict/predict, Finetune/finetune
                         help='training, predicting or finetuning')
+    parser.add_argument('--load-model', type=str, default='trained_models/newest.pt',
+                        help='the model to load')
     args = parser.parse_args()
+    print(args)
 
     torch.manual_seed(args.seed)
     #是否使用GPU
@@ -199,16 +244,17 @@ if __name__ == '__main__':
     # get train data 
     train_set, test_set = data.get_data()
 
-    print("loading datasets")
+    print("===> loading datasets")
     batch_size = args.batch_size
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=batch_size, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(
-        test_set, batch_size=batch_size
-    )
+    if args.phase != 'Predict' and args.phase != 'predict':
+        train_loader = torch.utils.data.DataLoader(
+            train_set, batch_size=batch_size, shuffle=True)
+        valid_loader = torch.utils.data.DataLoader(
+            test_set, batch_size=batch_size
+        )
 
-    print("building model")
-    model = Net().to(device)
+    print("===> building model")
+    model: Net = Net().to(device)
     criterion_pts = nn.MSELoss()
     optimizer = optim.SGD(model.parameters(), args.lr, args.momentum)
 
@@ -220,11 +266,52 @@ if __name__ == '__main__':
     elif args.phase == 'Test' or args.phase == 'test':
         print('===> Test')
         # how to do test?
+        test_loader = valid_loader
+        saved_state = torch.load(args.load_model)
+        model.load_state_dict(saved_state)
+        test_loss = model_test(model, test_loader, device, criterion_pts)
+        print(f'test loss: {test_loss}')
+        print('====================================================')
     elif args.phase == 'Finetune' or args.phase == 'finetune':
         print('===> Finetune')
         # how to do finetune?
+        # load the saved model, and adjust the parameters
+        saved_state = torch.load('trained_models/detector_epoch_270.pt')
+        model.load_state_dict(saved_state)
+
+        train_losses, valid_losses = \
+            train(args, train_loader, valid_loader, model, criterion_pts, optimizer, device)
+        print('====================================================')
     elif args.phase == 'Predict' or args.phase == 'predict':
         print('===> Predict')
+        import cv2 as cv
+        import numpy as np
         # how to do predict?
+        # 1. load the model
+        # 2. call forward
+        saved_state = torch.load(args.load_model)
+        model.load_state_dict(saved_state)
+        # predict data from validation dataset
+        model.eval()
+        for i in range(5):
+            filename = f'mydata/face-new{i}.png'
+            if not os.path.exists(filename):
+                continue
+            input_data = data.input_from_image(filename)
 
-    
+            img: torch.Tensor = input_data['image']
+            img = img.unsqueeze(0)
+
+            output: torch.Tensor = model.forward(img.to(device))
+            print(output)
+            # save the image and landmarks
+            img = img.reshape((112, 112)) * 255
+            img = img.numpy().astype(np.uint8)
+            # Gray image can not draw keypoints(I don't known)
+            img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+
+            output_cpu = output.cpu()
+            kps_raw = output_cpu[0].detach().numpy()
+            kps = data.gen_keypoints(kps_raw)
+            cv.drawKeypoints(img, kps, img, color=(0, 0, 255))
+            cv.imwrite(f'log/{os.path.basename(filename)}', img)

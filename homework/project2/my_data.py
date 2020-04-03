@@ -36,7 +36,7 @@ def parse_line(line):
     return img_name, rect, landmarks
 
 
-def channel_norm(img: np.ndarray):
+def channel_norm(img: np.ndarray) -> np.ndarray:
     """
     对图片进行normalize
     :param img:
@@ -69,6 +69,38 @@ class Normalize(object):
         return {'image': image,
                 'landmarks': landmarks
                 }
+
+
+def gen_keypoints(kp_raw: np.float32)-> List[cv.KeyPoint]:
+    """
+    Get key points from arr: [x1, y1, x2, y2, ...]
+    :param kp_raw:
+    :return:
+    """
+    kp_arr = kp_raw.reshape(-1, 2)
+    kps = []
+    for p in kp_arr:
+        kps.append(cv.KeyPoint(p[0], p[1], 0))
+    return kps
+
+
+def input_from_image(filename: str) -> torch.Tensor:
+    """
+    Get input tensor from file
+    :param filename:
+    :return:
+    """
+    img = cv.imread(filename, 0)
+    normalizer = Normalize()
+    data = {
+        'image': img,
+        'landmarks': np.array([])
+    }
+    data = normalizer.__call__(data)
+    # to tensor
+    to_tensor = ToTensor()
+    input_data = to_tensor.__call__(data)
+    return input_data
 
 
 class ToTensor(object):
