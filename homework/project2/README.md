@@ -14,8 +14,8 @@ Training base on the given model
 
 ## predict
 
-run `python my_detector.py --phase predict --input <inputPath> --out <outPath>` in terminal
+run `python my_detector.py --phase predict  --load-model <modelPath> --input <inputPath> --out <outPath>` in terminal
 
 ## more information
 
-logs 
+messages saved in directory log

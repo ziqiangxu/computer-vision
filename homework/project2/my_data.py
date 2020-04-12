@@ -10,11 +10,15 @@ TRAIN_BOARDER = 112
 
 
 def get_data(normalize=True) -> tuple:
+    """
+    Get train and test data
+    :param normalize:
+    :return:
+    """
     with open('train.txt', 'r') as f:
-        lines = f.readlines()
-    faces_num = len(lines)
-    # 2 valid 8 train
-    valid_num = faces_num // 5
+        train_data = f.readlines()
+    with open('test.txt', 'r') as f:
+        test_data = f.readlines()
 
     if normalize:
         tsfm = transforms.Compose([
@@ -23,8 +27,8 @@ def get_data(normalize=True) -> tuple:
     else:
         tsfm = transforms.Compose([ToTensor()])
 
-    return (FaceLandmarksDataset(lines[valid_num:], tsfm),
-            FaceLandmarksDataset(lines[:valid_num], tsfm))
+    return (FaceLandmarksDataset(train_data, tsfm),
+            FaceLandmarksDataset(test_data, tsfm))
 
 
 def parse_line(line):

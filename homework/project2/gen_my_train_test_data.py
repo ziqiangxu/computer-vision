@@ -1,11 +1,11 @@
 import cv2 as cv
 import numpy as np
 import os
-from typing import List
+from typing import List, TextIO
 import logging
 
 
-def gen_keypoints(kp_raw: np.float32)-> List[cv.KeyPoint]:
+def gen_keypoints(kp_raw: np.float32) -> List[cv.KeyPoint]:
     """
     根据数组生成关键点列表
     """
@@ -14,6 +14,7 @@ def gen_keypoints(kp_raw: np.float32)-> List[cv.KeyPoint]:
     for p in kp_arr:
         kps.append(cv.KeyPoint(p[0], p[1], 0))
     return kps
+
 
 def zoom_rect(
     point_left_top: np.ndarray, 
@@ -41,6 +42,7 @@ def zoom_rect(
         tuple(prb.astype(np.int32).tolist())
     )
 
+
 def relative_keypoints(
     kp_raw: np.ndarray, 
     point_left_top: np.ndarray) -> np.ndarray:
@@ -49,6 +51,7 @@ def relative_keypoints(
     """
     kp_raw.reshape((-1, 2))
     return kp_raw - point_left_top
+
 
 def gen_test_data(filepath, data, target_dir, mode="draw"):
     """
@@ -104,6 +107,7 @@ def gen_test_data(filepath, data, target_dir, mode="draw"):
 #         filepath = os.path.join('data/I', label[0])
 #         gen_test_data(filepath, data, "mydata/train/")
 
+
 def gen_data_label(data_raw: list, file_path: str, draw_face=False) -> str:
     data = []
     for i in data_raw:
@@ -134,36 +138,63 @@ def gen_data_label(data_raw: list, file_path: str, draw_face=False) -> str:
     return res
 
 
+def split_data(label_path: str, train_file: TextIO, test_file: TextIO, factor=0.8):
+    file_dir = os.path.dirname(label_path)
+    label_file = open(label_path, 'r')
+
+    labels: List = label_file.readlines()
+    train_size = int(len(labels) * factor)
+    train_data = labels[0: train_size]
+    test_data = labels[train_size:]
+    for e in train_data:
+        data_raw = e.split(' ')
+        file_path = os.path.join(file_dir, data_raw[0])
+        if os.path.exists(file_path):
+            res = gen_data_label(data_raw[1:], file_path)
+            train_file.write(res + '\n')
+    for e in test_data:
+        data_raw = e.split(' ')
+        file_path = os.path.join(file_dir, data_raw[0])
+        if os.path.exists(file_path):
+            res = gen_data_label(data_raw[1:], file_path)
+            test_file.write(res + '\n')
+    label_file.close()
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    # 总共2000张图片
-    test_size = 400
-    train_size = 1600
-    valid_face_num = 0
 
     train_file = open('train.txt', 'w')
+    test_file = open('test.txt', 'w')
+    labels_path = ['data/I/label.txt', 'data/II/label.txt']
 
-    with open('data/I/label.txt', 'r') as f:
-        lines = f.readlines()
-        for i in range(len(lines)):
-        # for i in range(10):
-            data_raw = lines[i].split(' ')
-            file_path = f'data/I/{data_raw[0]}'
-            if os.path.exists(file_path):
-                valid_face_num += 1
-                res = gen_data_label(data_raw[1:], file_path)
-                train_file.write(res + '\n')
-
-    with open('data/II/label.txt', 'r') as f:
-        lines = f.readlines()
-        for i in range(len(lines)):
-        # for i in range(10):
-            data_raw = lines[i].split(' ')
-            file_path = f'data/II/{data_raw[0]}'
-            if os.path.exists(file_path):
-                valid_face_num += 1
-                res = gen_data_label(data_raw[1:], file_path)
-                train_file.write(res + '\n')
+    split_data(labels_path[0], train_file, test_file)
+    split_data(labels_path[1], train_file, test_file)
 
     train_file.close()
-    logging.info(f'total valid faces: {valid_face_num}')
+    test_file.close()
+
+    # with open('data/I/label.txt', 'r') as f:
+    #     lines = f.readlines()
+    #     total_size = len(lines)
+    #     test_size = total_size // 5
+    #     for i in range(total_size):
+    #     # for i in range(10):
+    #         data_raw = lines[i].split(' ')
+    #         file_path = f'data/I/{data_raw[0]}'
+    #         if os.path.exists(file_path):
+    #             valid_face_num += 1
+    #             res = gen_data_label(data_raw[1:], file_path)
+    #             train_file.write(res + '\n')
+    #
+    #
+    # with open('data/II/label.txt', 'r') as f:
+    #     lines = f.readlines()
+    #     for i in range(len(lines)):
+    #     # for i in range(10):
+    #         data_raw = lines[i].split(' ')
+    #         file_path = f'data/II/{data_raw[0]}'
+    #         if os.path.exists(file_path):
+    #             valid_face_num += 1
+    #             res = gen_data_label(data_raw[1:], file_path)
+    #             train_file.write(res + '\n')

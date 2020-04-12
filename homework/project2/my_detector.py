@@ -230,6 +230,8 @@ if __name__ == '__main__':
                         help='training, predicting or finetuning')
     parser.add_argument('--load-model', type=str, default='trained_models/newest.pt',
                         help='the model to load')
+    parser.add_argument('--input', type=str, help='path of input image')
+    parser.add_argument('--output', type=str, help='path of out image')
     args = parser.parse_args()
     print(args)
 
@@ -276,7 +278,7 @@ if __name__ == '__main__':
         print('===> Finetune')
         # how to do finetune?
         # load the saved model, and adjust the parameters
-        saved_state = torch.load('trained_models/detector_epoch_270.pt')
+        saved_state = torch.load('trained_models/detector_epoch_499.pt')
         model.load_state_dict(saved_state)
 
         train_losses, valid_losses = \
@@ -293,25 +295,36 @@ if __name__ == '__main__':
         model.load_state_dict(saved_state)
         # predict data from validation dataset
         model.eval()
-        for i in range(5):
-            filename = f'mydata/face-new{i}.png'
-            if not os.path.exists(filename):
-                continue
-            input_data = data.input_from_image(filename)
 
-            img: torch.Tensor = input_data['image']
-            img = img.unsqueeze(0)
+        # for i in range(10):
+        # filename = f'mydata/face-new{i}.png'
+        filename = args.input
+        out_img = args.output
+        if not os.path.exists(filename):
+            raise Exception(f'{filename} not found')
+        input_data = data.input_from_image(filename)
 
-            output: torch.Tensor = model.forward(img.to(device))
-            print(output)
-            # save the image and landmarks
-            img = img.reshape((112, 112)) * 255
-            img = img.numpy().astype(np.uint8)
-            # Gray image can not draw keypoints(I don't known)
-            img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+        img: torch.Tensor = input_data['image']
+        img = img.unsqueeze(0)
 
-            output_cpu = output.cpu()
-            kps_raw = output_cpu[0].detach().numpy()
-            kps = data.gen_keypoints(kps_raw)
-            cv.drawKeypoints(img, kps, img, color=(0, 0, 255))
-            cv.imwrite(f'log/{os.path.basename(filename)}', img)
+        output: torch.Tensor = model.forward(img.to(device))
+        print(output)
+
+        output_cpu = output.cpu()
+        kps_raw = output_cpu[0].detach().numpy()
+        kps_raw = kps_raw.reshape(-1, 2)
+
+        # Scale the key points
+        img_color = cv.imread(filename)
+        h_factor = img_color.shape[0] / data.TRAIN_BOARDER
+        w_factor = img_color.shape[1] / data.TRAIN_BOARDER
+        # print(img_color.shape, w_factor, h_factor)
+        # print('previous: ', kps_raw.reshape(-1,21))
+        kps_raw[:, 0] = kps_raw[:, 0] * w_factor
+        kps_raw[:, 1] = kps_raw[:, 1] * h_factor
+        kps = data.gen_keypoints(kps_raw)
+        # print('zoomed:', kps_raw.reshape(-1,21))
+
+        cv.drawKeypoints(img_color, kps, img_color, color=(0, 0, 255))
+        # cv.imwrite(f'log/{os.path.basename(filename)}', img)
+        cv.imwrite(out_img, img_color)
