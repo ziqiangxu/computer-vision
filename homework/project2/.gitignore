@@ -1,0 +1,8 @@
+log
+mydata
+ref
+trained_models
+train.txt
+test.txt
+color_model
+*.png
