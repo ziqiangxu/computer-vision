@@ -94,7 +94,7 @@ def input_from_image(filename: str) -> torch.Tensor:
     :param filename:
     :return:
     """
-    img = cv.imread(filename, 0)
+    img = cv.imread(filename)
     normalizer = Normalize()
     data = {
         'image': img,
@@ -117,8 +117,8 @@ class ToTensor(object):
         # swap color axis because
         # numpy image: H x W x C
         # torch image: C X H X W
-        # image = image.transpose((2, 0, 1))
-        image = np.expand_dims(image, axis=0)
+        image = image.transpose((2, 0, 1))
+        # image = np.expand_dims(image, axis=0)
         return {'image': torch.from_numpy(image),
                 'landmarks': torch.from_numpy(landmarks)}
 
@@ -141,7 +141,7 @@ class FaceLandmarksDataset(Dataset):
         img_name, rect, landmarks = parse_line(self.lines[idx])
         # image
         # img = Image.open(img_name).convert('L')
-        img = cv.imread(img_name, 0)
+        img = cv.imread(img_name)
         # img = Image.open(img_name)
 
         # img_crop = img.crop(tuple(rect))

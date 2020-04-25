@@ -17,7 +17,7 @@ class Net(nn.Module):
         # Backbone:
         # in_channel, out_channel, kernel_size, stride, padding
         # block 1
-        self.conv1_1 = nn.Conv2d(1, 8, 5, 2, 0)
+        self.conv1_1 = nn.Conv2d(3, 8, 5, 2, 0)
         # block 2
         self.conv2_1 = nn.Conv2d(8, 16, 3, 1, 0)
         self.conv2_2 = nn.Conv2d(16, 16, 3, 1, 0)
@@ -164,7 +164,7 @@ def train(
         if args.save_model:
             saved_model_name = os.path.join(args.save_directory, 
             # f'detector_epoch_{epoch_id}_{train_mean_pts_loss}_{valid_mean_pts_loss}.pt')
-            f'detector_epoch_{epoch_id}.pt')
+            f'detector_epoch_{args.phase}_{epoch_id}.pt')
             torch.save(model.state_dict(), saved_model_name)
         draw_loss(train_losses, valid_losses, args.phase)
 
@@ -205,6 +205,7 @@ def draw_loss(train_losses, valid_losses, prefix):
     ax.plot(valid_losses, label='valid_losses')
     ax.legend()
     fig.savefig(f'log/{prefix}_losses.png')
+    plt.clf()
 
 
 if __name__ == '__main__':
@@ -243,12 +244,13 @@ if __name__ == '__main__':
     # For multi GPUs, nothing need to change here
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cude else {}
 
-    # get train data 
-    train_set, test_set = data.get_data()
+    # get datasets
+    train_set, test_set = None, None
 
     print("===> loading datasets")
     batch_size = args.batch_size
     if args.phase != 'Predict' and args.phase != 'predict':
+        train_set, test_set = data.get_data()
         train_loader = torch.utils.data.DataLoader(
             train_set, batch_size=batch_size, shuffle=True)
         valid_loader = torch.utils.data.DataLoader(
@@ -265,6 +267,16 @@ if __name__ == '__main__':
         train_losses, valid_losses = \
             train(args, train_loader, valid_loader, model, criterion_pts, optimizer, device)
         print('====================================================')
+    elif args.phase == 'Finetune' or args.phase == 'finetune':
+        print('===> Finetune')
+        # how to do finetune?
+        # load the saved model, and adjust the parameters
+        saved_state = torch.load(args.load_model)
+        model.load_state_dict(saved_state)
+
+        train_losses, valid_losses = \
+            train(args, train_loader, valid_loader, model, criterion_pts, optimizer, device)
+        print('====================================================')
     elif args.phase == 'Test' or args.phase == 'test':
         print('===> Test')
         # how to do test?
@@ -273,16 +285,6 @@ if __name__ == '__main__':
         model.load_state_dict(saved_state)
         test_loss = model_test(model, test_loader, device, criterion_pts)
         print(f'test loss: {test_loss}')
-        print('====================================================')
-    elif args.phase == 'Finetune' or args.phase == 'finetune':
-        print('===> Finetune')
-        # how to do finetune?
-        # load the saved model, and adjust the parameters
-        saved_state = torch.load('trained_models/detector_epoch_499.pt')
-        model.load_state_dict(saved_state)
-
-        train_losses, valid_losses = \
-            train(args, train_loader, valid_loader, model, criterion_pts, optimizer, device)
         print('====================================================')
     elif args.phase == 'Predict' or args.phase == 'predict':
         print('===> Predict')
