@@ -58,7 +58,8 @@ class Normalize(object):
 class ToTensor(object):
     def __call__(self, sample):
         image, category = sample['image'], sample['category']
-        image = np.expand_dims(image, axis=0)
+        # image = np.expand_dims(image, axis=0)
+        image = image.transpose([2, 0, 1])
         return {
             'image': torch.from_numpy(image),
             'category': torch.from_numpy(category)
@@ -70,7 +71,7 @@ class DataElement:
     todo replace dict{'image': image, 'category': category} with this class
     """
     def __init__(self, image: np.ndarray, category: int):
-        self.image = image
+        self.image: np.ndarray = image
         self.category = category
 
 
@@ -92,7 +93,7 @@ class TrafficSignDataset(Dataset):
         img_name, type_idx = parse_line(self.lines[idx])
         # image
         # img = Image.open(img_name).convert('L')
-        image = cv.imread(img_name, 0)
+        image = cv.imread(img_name)
         category = np.zeros(CATEGORY_NUM)
         category[type_idx] = 1.0
 
