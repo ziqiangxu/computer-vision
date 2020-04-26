@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import torch
@@ -62,7 +63,8 @@ class ToTensor(object):
         image = image.transpose([2, 0, 1])
         return {
             'image': torch.from_numpy(image),
-            'category': torch.from_numpy(category)
+            # 'category': torch.from_numpy(category)
+            'category': torch.tensor(category)
         }
 
 
@@ -94,10 +96,10 @@ class TrafficSignDataset(Dataset):
         # image
         # img = Image.open(img_name).convert('L')
         image = cv.imread(img_name)
-        category = np.zeros(CATEGORY_NUM)
-        category[type_idx] = 1.0
+        # category = np.zeros(CATEGORY_NUM)
+        # category[type_idx] = 1.0
 
-        sample = {'image': image, 'category': category}
+        sample = {'image': image, 'category': type_idx}
         sample = self.transform(sample)
         return sample
 
@@ -113,12 +115,34 @@ def get_data():
     return train_dataset, test_dataset
 
 
-if __name__ == '__main__':
+def input_from_file(file_path: str) -> torch.Tensor:
+    if not os.path.exists(file_path):
+        raise FileExistsError()
+    img = cv.imread(file_path)
+    x = {
+        'image': img,
+        'category': -1
+    }
+    # normalize
+    normalizer = Normalize()
+    x = normalizer(x)
+
+    # to to tenser
+    to_tensor = ToTensor()
+    x = to_tensor(x)
+    return x['image'].unsqueeze(0)
+
+
+def test():
     with open(TEST_LABEL, 'r') as f:
         # the first line is header of the table
         print('header of the table:', f.readline())
         for i in range(10):
             print(parse_line(f.readline()))
     train_dataset, test_dataset = get_data()
-    b = train_dataset[0]
+    b = train_dataset[1000]
     print(b)
+
+
+if __name__ == '__main__':
+    test()
