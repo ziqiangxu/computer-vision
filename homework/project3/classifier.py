@@ -18,21 +18,31 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         # conv1_1 block: nx512x3x3 -> nx128x3x3
-        self.conv1_1 = nn.Conv2d(512, 128, 3, 1, padding=1)
+        self.conv1_1 = nn.Conv2d(512, 256, 3, 1, padding=1)
         # active
-        self.relu1 = nn.PReLU()
+        self.relu1_1 = nn.PReLU()
+
+        self.conv1_2 = nn.Conv2d(256, 128, 3, 1, padding=1)
+        self.relu1_2 = nn.PReLU()
+
+        self.conv1_3 = nn.Conv2d(128, 128, 3, 1, padding=0)
+        self.relu1_3 = nn.PReLU()
+
+        self.conv1_4 = nn.Conv2d(128, 80, 1, 1)
+        self.relu1_4 = nn.PReLU()
 
         # conv1_2 block: nx128x3x3 -> nx62x1x1
-        self.conv1_2 = nn.Conv2d(128, CATEGORY_NUM, 3, 1, padding=0)
+        self.conv2_1 = nn.Conv2d(80, CATEGORY_NUM, 1, 1)
         # softmax
         self.soft_max = nn.Softmax(1)
 
     def forward(self, x):
-        x = self.conv1_1(x)
-        x = self.relu1(x)
+        x = self.relu1_1(self.conv1_1(x))
+        x = self.relu1_2(self.conv1_2(x))
+        x = self.relu1_3(self.conv1_3(x))
+        x = self.relu1_4(self.conv1_4(x))
 
-        x = self.conv1_2(x)
-        x = self.soft_max(x)
+        x = self.soft_max(self.conv2_1(x))
         return x.view(-1, CATEGORY_NUM)
 
 
