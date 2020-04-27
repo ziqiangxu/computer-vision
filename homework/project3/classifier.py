@@ -51,10 +51,11 @@ class Argument:
         self.model = arguments.model
         self.input = arguments.input
         self.gpu_no = arguments.gpu_no
+        self.model_save_prefix = arguments.model_save_prefix
 
 
 def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: DataLoader,
-          model: Net, criterion: nn.CrossEntropyLoss, optimizer: optim.SGD, device):
+          model: Net, criterion: nn.CrossEntropyLoss, optimizer: optim.Optimizer, device):
     # backbone nx3x112x112
     vgg16 = torchvision.models.vgg16(pretrained=True)
     vgg16_features = vgg16.features.to(device)
@@ -93,32 +94,29 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
         train_losses.append(train_mean_loss)
 
         # valid
-        valid_mean_loss = 0
-        batch_count = 0
-        for batch_idx, batch in enumerate(valid_data_loader):
-            img: torch.Tensor = batch["image"]
-            category: torch.Tensor = batch["category"]
-            input_img = img.to(device)
-            ground_truth = category.to(device)
+        model.eval()
+        with torch.no_grad():
+            valid_mean_loss = 0
+            batch_count = 0
+            for batch_idx, batch in enumerate(valid_data_loader):
+                img: torch.Tensor = batch["image"]
+                category: torch.Tensor = batch["category"]
+                input_img = img.to(device)
+                ground_truth = category.to(device)
 
-            # clear the gradients of all optimized variables
-            optimizer.zero_grad()
-            output_pts = model(vgg16_features(input_img))
-            loss = criterion(output_pts, ground_truth)
+                output_pts = model(vgg16_features(input_img))
+                loss = criterion(output_pts, ground_truth)
 
-            # BP
-            loss.backward()
-            optimizer.step()
-            valid_mean_loss += loss.item()
-            batch_count += 1
+                valid_mean_loss += loss.item()
+                batch_count += 1
 
-        valid_mean_loss /= batch_count
-        valid_losses.append(valid_mean_loss)
-        print(f'epoch: {epoch_id}, train loss: {train_mean_loss},  valid loss: {valid_mean_loss}')
+            valid_mean_loss /= batch_count
+            valid_losses.append(valid_mean_loss)
+            print(f'epoch: {epoch_id}, train loss: {train_mean_loss},  valid loss: {valid_mean_loss}')
 
         if args.save_model:
-            saved_model_name = os.path.join(args.save_directory,
-            f'{args.phase}_epoch_{epoch_id}.pt')
+            saved_model_name = os.path.join(args.save_directory, f'{args.phase}_{args.model_save_prefix}_epoch_{epoch_id}.pt')
+            print(f'saving ...: {saved_model_name}')
             torch.save(model.state_dict(), saved_model_name)
         show_loss(train_losses, valid_losses, f'log/loss/{args.phase}_epoch{epoch_id}.png')
     return train_losses, valid_losses
@@ -141,6 +139,7 @@ def parse_arguments():
     parser.add_argument('--save-model', action='store_false') # ??true
     parser.add_argument('--save-directory', type=str, default='trained_models',
                         help='learnt models are saving here')
+    parser.add_argument('--model-save-prefix', type=str, help="prefix for model saving name")
 
     parser.add_argument('--phase', type=str, default='train',   # Train/train, Predict/predict, Finetune/finetune
                         help='training, predicting or finetuning')
@@ -168,7 +167,6 @@ if __name__ == '__main__':
     model = Net().to(device)
     criterion_pts = nn.CrossEntropyLoss()
     params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.SGD(params, args.lr, args.momentum)
 
     if args.model:
         saved_status = torch.load(args.model)
@@ -177,17 +175,18 @@ if __name__ == '__main__':
     # todo predict
     if args.phase == 'predict':
         model.eval()
+        with torch.no_grad():
+            input_x = input_from_file(args.input)
+            input_x = input_x.to(device)
 
-        input_x = input_from_file(args.input)
-        input_x = input_x.to(device)
-
-        vgg16 = torchvision.models.vgg16(pretrained=True)
-        vgg16_features = vgg16.features.to(device)
-        x = vgg16_features(input_x)
-        output: torch.Tensor = model.forward(x)
-        print(output)
-        print(f'sum: {output.sum()}, max: {output.max()}, category: {output.argmax(1)}')
-        exit(0)
+            vgg16 = torchvision.models.vgg16(pretrained=True)
+            vgg16_features = vgg16.features.to(device)
+            x = vgg16_features(input_x)
+            # output: torch.Tensor = model.forward(x)
+            output: torch.Tensor = model(x)
+            print(output)
+            print(f'sum: {output.sum()}, max: {output.max()}, category: {output.argmax(1)}')
+            exit(0)
 
     # not predict
     train_data, valid_data = get_data()
@@ -195,6 +194,9 @@ if __name__ == '__main__':
     valid_data_loader = DataLoader(valid_data, args.batch_size)
 
     if args.phase == 'train':
+        # optimizer = optim.Adam(params, args.lr, weight_decay=0.001)
+        optimizer = optim.Adadelta(params, args.lr, weight_decay=0.001)
         train(args, train_data_loader, valid_data_loader, model, criterion_pts, optimizer, device)
     elif args.phase == 'finetune':
+        optimizer = optim.SGD(params, args.lr, args.momentum, weight_decay=0.001)
         train(args, train_data_loader, valid_data_loader, model, criterion_pts, optimizer, device)
