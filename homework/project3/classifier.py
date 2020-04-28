@@ -18,31 +18,20 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         # conv1_1 block: nx512x3x3 -> nx128x3x3
-        self.conv1_1 = nn.Conv2d(512, 256, 3, 1, padding=1)
+        self.conv1_1 = nn.Conv2d(512, 512, 3, 1, padding=0)
         # active
         self.relu1_1 = nn.PReLU()
 
-        self.conv1_2 = nn.Conv2d(256, 128, 3, 1, padding=1)
-        self.relu1_2 = nn.PReLU()
+        self.full_connect = nn.Linear(512, 62)
 
-        self.conv1_3 = nn.Conv2d(128, 128, 3, 1, padding=0)
-        self.relu1_3 = nn.PReLU()
-
-        self.conv1_4 = nn.Conv2d(128, 80, 1, 1)
-        self.relu1_4 = nn.PReLU()
-
-        # conv1_2 block: nx128x3x3 -> nx62x1x1
-        self.conv2_1 = nn.Conv2d(80, CATEGORY_NUM, 1, 1)
         # softmax
         self.soft_max = nn.Softmax(1)
 
     def forward(self, x):
         x = self.relu1_1(self.conv1_1(x))
-        x = self.relu1_2(self.conv1_2(x))
-        x = self.relu1_3(self.conv1_3(x))
-        x = self.relu1_4(self.conv1_4(x))
+        x = self.full_connect(x.view(-1, 512))
 
-        x = self.soft_max(self.conv2_1(x))
+        x = self.soft_max(x)
         return x.view(-1, CATEGORY_NUM)
 
 
@@ -178,7 +167,7 @@ if __name__ == '__main__':
     criterion_pts = nn.CrossEntropyLoss()
     params = filter(lambda p: p.requires_grad, model.parameters())
 
-    if args.model:
+    if args.model and os.path.exists(args.model):
         saved_status = torch.load(args.model)
         model.load_state_dict(saved_status)
 

@@ -1,4 +1,5 @@
 import os
+import unittest
 from typing import List
 
 import torch
@@ -11,6 +12,7 @@ import cv2 as cv
 
 TEST_LABEL = 'traffic-sign/test_label.csv'
 TRAIN_LABEL = 'traffic-sign/train_label.csv'
+EXPANDED_TRAIN_LABEL = 'traffic-sign/expanded_train_label.csv'
 
 
 def parse_line(line: str):
@@ -105,13 +107,13 @@ class TrafficSignDataset(Dataset):
 
 
 def get_data():
-    trans = transforms.Compose([Normalize(), ToTensor()])
-    with open(TRAIN_LABEL, 'r') as f:
+    transform_list = [Normalize(), ToTensor()]
+    with open(EXPANDED_TRAIN_LABEL, 'r') as f:
         f.readline()
-        train_dataset = TrafficSignDataset(f.readlines(), trans)
+        train_dataset = TrafficSignDataset(f.readlines(), transforms.Compose(transform_list))
     with open(TEST_LABEL, 'r') as f:
         f.readline()
-        test_dataset = TrafficSignDataset(f.readlines(), trans)
+        test_dataset = TrafficSignDataset(f.readlines(), transforms.Compose(transform_list))
     return train_dataset, test_dataset
 
 
@@ -133,16 +135,51 @@ def input_from_file(file_path: str) -> torch.Tensor:
     return x['image'].unsqueeze(0)
 
 
-def test():
-    with open(TEST_LABEL, 'r') as f:
-        # the first line is header of the table
-        print('header of the table:', f.readline())
-        for i in range(10):
-            print(parse_line(f.readline()))
-    train_dataset, test_dataset = get_data()
-    b = train_dataset[1000]
-    print(b)
+class MyTestCase(unittest.TestCase):
+    @staticmethod
+    def test_rotate_images():
+        import PIL.Image as Image
+        import torchvision.transforms as trans
+        random_rotate = trans.RandomRotation(180)
+        expanded_label = open(EXPANDED_TRAIN_LABEL, 'w')
+        with open(TRAIN_LABEL, 'r') as f:
+            # first line invalid
+            f.readline()
+            while True:
+                line = f.readline()
+                expanded_label.write(line)
+                if not line:
+                    break
+                raw_data = line.split(',')
+                file_path = raw_data[1]
+                if os.path.exists(file_path):
+                    img: Image.Image = Image.open(file_path)
+                    target_img: Image.Image = random_rotate(img)
+                    name_p1, name_p2 = os.path.splitext(file_path)
+
+                    target_name = f'{name_p1}_rotate_{name_p2}'
+                    target_img.save(target_name)
+
+                    newline = f'{raw_data[0]},{target_name},{raw_data[2]}'
+                    expanded_label.write(newline)
+        expanded_label.close()
+
+    @staticmethod
+    def test():
+        from torch.utils.data import DataLoader
+        with open(TEST_LABEL, 'r') as f:
+            # the first line is header of the table
+            print('header of the table:', f.readline())
+            for i in range(10):
+                print(parse_line(f.readline()))
+        train_dataset, test_dataset = get_data()
+
+        train_dataset_loader = DataLoader(train_dataset)
+        test_dataset_loader = DataLoader(test_dataset)
+
+        b = train_dataset[1000]
+        print(b)
 
 
 if __name__ == '__main__':
-    test()
+    unittest.main()
