@@ -96,6 +96,7 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
         model.eval()
         with torch.no_grad():
             valid_mean_loss = 0
+            accuracy = 0
             batch_count = 0
             for batch_idx, batch in enumerate(valid_data_loader):
                 img: torch.Tensor = batch["image"]
@@ -103,15 +104,21 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
                 input_img = img.to(device)
                 ground_truth = category.to(device)
 
-                output_pts = model(vgg16_features(input_img))
+                output_pts: torch.Tensor = model(vgg16_features(input_img))
+                y_index = output_pts.argmax(1)
+                res = ground_truth == y_index
+                rate = res.sum().cpu().item() / len(category)
+                accuracy += rate
+
                 loss = criterion(output_pts, ground_truth)
 
                 valid_mean_loss += loss.item()
                 batch_count += 1
 
             valid_mean_loss /= batch_count
+            accuracy /= batch_count
             valid_losses.append(valid_mean_loss)
-            print(f'epoch: {epoch_id}, train loss: {train_mean_loss},  valid loss: {valid_mean_loss}')
+            print(f'epoch: {epoch_id}, train loss: {train_mean_loss},  valid loss: {valid_mean_loss}, acc: {accuracy}')
 
         if args.save_model:
             saved_model_name = os.path.join(args.save_directory, f'{args.phase}_{args.model_save_prefix}_epoch_{epoch_id}.pt')
@@ -123,7 +130,7 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Classifier')
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--test-batch-size', type=int, default=64)
     parser.add_argument('--epoch', type=int, default=5000)
     parser.add_argument('--lr', type=float, default=0.001)
@@ -168,8 +175,11 @@ if __name__ == '__main__':
     params = filter(lambda p: p.requires_grad, model.parameters())
 
     if args.model and os.path.exists(args.model):
+        print(f"loading model: {args.model}")
         saved_status = torch.load(args.model)
         model.load_state_dict(saved_status)
+    else:
+        print("warning: model not found")
 
     # todo predict
     if args.phase == 'predict':
@@ -189,7 +199,7 @@ if __name__ == '__main__':
 
     # not predict
     train_data, valid_data = get_data()
-    train_data_loader = DataLoader(train_data, args.batch_size)
+    train_data_loader = DataLoader(train_data, args.batch_size, shuffle=True)
     valid_data_loader = DataLoader(valid_data, args.batch_size)
 
     if args.phase == 'train':
