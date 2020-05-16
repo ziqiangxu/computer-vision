@@ -21,3 +21,13 @@ def npy2nii(volume: np.ndarray, nii_path: str):
         nib.nifti1.save(img, nii_path)
     except:
         print("failed to convert npy to nii")
+
+
+def get_arr_from_nii(nii_path: str) -> np.ndarray:
+    """
+    Get data from NIfTI
+    :param nii_path:
+    :return:
+    """
+    nii = nib.load(nii_path)
+    return nii.get_data()
