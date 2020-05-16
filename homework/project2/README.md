@@ -18,4 +18,5 @@ run `python my_detector.py --phase predict  --load-model <modelPath> --input <in
 
 ## more information
 
-messages saved in directory log
+1. messages saved in directory log
+2. model saved in directory trained_models
