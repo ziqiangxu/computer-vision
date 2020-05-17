@@ -5,10 +5,7 @@ import cv2
 import skimage.measure as measure
 import scipy
 import math
-
-SPACING_X = SPACING_Y = 0.731
-SPACING_Z = 2.5
-MAX_NODULE_SIZE = 30  # todo update to 30mm
+from const import *
 
 
 def show_gray_img(image, tile=None):
@@ -51,34 +48,34 @@ def get_suspected_nodule_mask_2d(slice_: np.ndarray, axis_spacing: float) -> np.
     edges_blur[edges_blur == 2] = 1
     # seperate = edges_blur * slice_u8
 
-    seperate_connected = measure.label(edges_blur, connectivity=1)
+    separate_connected = measure.label(edges_blur, connectivity=1)
 
     pixel_num_min = SPACING_Z * SPACING_Z / SPACING_X / SPACING_Y
     pixel_num_max = math.pi * 15 * 15 / (SPACING_X * SPACING_X)
 
     # reserve 0 to mark the background
-    seperate_connected[seperate_connected == 0] = seperate_connected.max() + 1
+    separate_connected[separate_connected == 0] = separate_connected.max() + 1
     large_area_count = 0
     small_area_count = 0
-    for v in np.unique(seperate_connected):
-        pixel_num = np.sum(seperate_connected == v)
+    for v in np.unique(separate_connected):
+        pixel_num = np.sum(separate_connected == v)
         if pixel_num < pixel_num_min:
-            seperate_connected[seperate_connected == v] = 0
+            separate_connected[separate_connected == v] = 0
             small_area_count += 1
         elif pixel_num > pixel_num_max:
-            seperate_connected[seperate_connected == v] = 0
+            separate_connected[separate_connected == v] = 0
             large_area_count += 1
     print(f'some area ignored, small area: {small_area_count}, large area: {large_area_count} ')
-    show_img(seperate_connected)
-    show_gray_img(seperate_connected)
+    show_img(separate_connected)
+    show_gray_img(separate_connected)
 
     # morphology operate to erase small areas
     kernel = np.ones((3, 3), np.uint8)
-    seperate_mask = seperate_connected.astype(np.uint8)
+    seperate_mask = separate_connected.astype(np.uint8)
     seperate_mask[seperate_mask != 0] = 1
     seperate_mask = cv2.morphologyEx(seperate_mask, cv2.MORPH_OPEN, kernel)
-    show_gray_img(np.bitwise_and(seperate_connected, seperate_mask))
-    show_gray_img(seperate_connected)
+    show_gray_img(np.bitwise_and(separate_connected, seperate_mask))
+    show_gray_img(separate_connected)
     show_gray_img(seperate_mask)
 
     # remove region diameter longer than 30mm
@@ -97,9 +94,9 @@ def get_suspected_nodule_mask_2d(slice_: np.ndarray, axis_spacing: float) -> np.
         if max(rect[1]) > MAX_NODULE_SIZE / axis_spacing:
             o_x, o_y = rect[0]
             # remove this object by index, firstly, get the region id
-            roi_id = seperate_connected[int(o_x), int(o_y)]
+            roi_id = separate_connected[int(o_x), int(o_y)]
             print(f'A large object detected: {max(rect[1])} pixels, at {o_x}, {o_y}, region_id: {roi_id}')
-            seperate_connected[seperate_connected == roi_id] = 0
+            separate_connected[separate_connected == roi_id] = 0
             break
 
         rect = cv2.boxPoints(rect)
@@ -108,7 +105,7 @@ def get_suspected_nodule_mask_2d(slice_: np.ndarray, axis_spacing: float) -> np.
     #     my_contours = [rect.astype(np.int)]
     img = cv2.drawContours(img, my_contours, -1, (0, 255, 0), 2)
     show_img(img)
-    return seperate_connected
+    return separate_connected
 
 
 def filter_in_xy(slice_: np.ndarray):

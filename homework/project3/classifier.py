@@ -71,6 +71,7 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
         ############
         model.train()
         train_mean_loss = 0
+        train_accuracy = 0
         batch_count = 0
         for batch_idx, batch in enumerate(train_data_loader):
             img: torch.Tensor = batch["image"]
@@ -81,7 +82,13 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
             # clear the gradients of all optimized variables
             optimizer.zero_grad()
             x: torch.Tensor = vgg16_features(input_img)
+
             output_pts = model(x)
+            y_index = output_pts.argmax(1)
+            res = ground_truth == y_index
+            rate = res.sum().cpu().item() / len(category)
+            train_accuracy += rate
+
             loss = criterion(output_pts, ground_truth)
 
             # BP
@@ -89,6 +96,8 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
             optimizer.step()
             train_mean_loss += loss.item()
             batch_count += 1
+
+        train_accuracy /= batch_count
         train_mean_loss /= batch_count
         train_losses.append(train_mean_loss)
 
@@ -96,7 +105,7 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
         model.eval()
         with torch.no_grad():
             valid_mean_loss = 0
-            accuracy = 0
+            valid_accuracy = 0
             batch_count = 0
             for batch_idx, batch in enumerate(valid_data_loader):
                 img: torch.Tensor = batch["image"]
@@ -108,7 +117,7 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
                 y_index = output_pts.argmax(1)
                 res = ground_truth == y_index
                 rate = res.sum().cpu().item() / len(category)
-                accuracy += rate
+                valid_accuracy += rate
 
                 loss = criterion(output_pts, ground_truth)
 
@@ -116,9 +125,10 @@ def train(args: Argument, train_data_loader: DataLoader, valid_data_loader: Data
                 batch_count += 1
 
             valid_mean_loss /= batch_count
-            accuracy /= batch_count
+            valid_accuracy /= batch_count
             valid_losses.append(valid_mean_loss)
-            print(f'epoch: {epoch_id}, train loss: {train_mean_loss},  valid loss: {valid_mean_loss}, acc: {accuracy}')
+            print(f'epoch: {epoch_id}, train loss: {train_mean_loss},  train_acc: {train_accuracy};'
+                  f' valid loss: {valid_mean_loss}, acc: {valid_accuracy}')
 
         if args.save_model:
             saved_model_name = os.path.join(args.save_directory, f'{args.phase}_{args.model_save_prefix}_epoch_{epoch_id}.pt')
