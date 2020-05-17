@@ -8,6 +8,7 @@ import tools
 def get_lung_atlas(image_path: str) -> np.ndarray:
     """
     Get lung area by https://github.com/JoHof/lungmask.git, combine the output of all models
+    todo Just run a model
     :param image_path image which supports by SimpleITK
     :return:
     """
@@ -48,19 +49,19 @@ def get_roi(image: np.ndarray, atlas: np.ndarray) -> np.ndarray:
 def test_get_lung_atlas():
     # first chanel as slice axis, best performance
     lung_atlas = get_lung_atlas("data/lung-trans-201.vtk")
-    tools.npy2nii(lung_atlas, 'data/output/lung-trans-201-atlas.nii')
+    tools.npy2nii(lung_atlas, 'data/output/lung-atlas.nii')
 
 
 def test_get_lung_roi():
     # Get lung roi
     atlas = tools.get_arr_from_nii('data/log/lung-entity-combine.nii')
-    image = tools.get_arr_from_nii('data/lung.nii')
+    image = tools.get_arr_from_nii('data/lung-trans-201.nii')
     lung_roi = get_roi(image, atlas)
     tools.npy2nii(lung_roi, 'data/output/lung-roi.nii')
 
 
 if __name__ == '__main__':
-    test_get_lung_atlas()
+    # test_get_lung_atlas()
     # test_get_lung_roi()
     pass
 

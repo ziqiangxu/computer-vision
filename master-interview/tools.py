@@ -31,3 +31,23 @@ def get_arr_from_nii(nii_path: str) -> np.ndarray:
     """
     nii = nib.load(nii_path)
     return nii.get_data()
+
+
+def get_window_img(img: np.ndarray, window_range: tuple) -> np.ndarray:
+    """
+    Get window img which dtype is uint8
+    :param img:
+    :param window_range: (window_start, window_end)
+    :return:
+    """
+    img_: np.ndarray = img.copy()
+    start, end = window_range
+    img_[img_ < start] = start
+    img_[img_ > end] = end
+    img_ -= img_.min()
+    max_ = img_.max()
+    if max_ <= 0:
+        return img_.astype(np.uint8)
+    img_ /= img_.max()
+    img_ *= 255
+    return img_.astype(np.uint8)
