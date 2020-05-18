@@ -11,9 +11,15 @@ def prepare_data():
     tools.npy2nii(nod, 'data/nod.nii')
 
     mat = io.loadmat('data/lung.mat')
-    lung = mat['vol']
+    lung: np.ndarray = mat['vol']
     np.save('data/lung.npy', lung)
     tools.npy2nii(lung, 'data/lung.nii')
+
+    lung_trans_201 = lung.transpose([2, 0, 1])
+    lung_trans_201_itk = SimpleITK.GetImageFromArray(lung_trans_201)
+    writer = SimpleITK.ImageFileWriter()
+    writer.SetFileName('data/lung-trans-201.vtk')
+    writer.Execute(lung_trans_201_itk)
 
     lung_itk = SimpleITK.GetImageFromArray(lung)
     writer = SimpleITK.ImageFileWriter()
