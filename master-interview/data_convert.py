@@ -20,6 +20,7 @@ def prepare_data():
     writer = SimpleITK.ImageFileWriter()
     writer.SetFileName('data/lung-trans-201.vtk')
     writer.Execute(lung_trans_201_itk)
+    tools.npy2nii(lung_trans_201, 'data/lung-trans-201.nii')
 
     lung_itk = SimpleITK.GetImageFromArray(lung)
     writer = SimpleITK.ImageFileWriter()

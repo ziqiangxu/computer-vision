@@ -26,14 +26,14 @@ def get_lung_atlas(image_path: str) -> np.ndarray:
 
     segmentation_lobes_r231 = mask.apply_fused(input_image)
     tools.npy2nii(segmentation_lobes_r231, 'data/log/lung-entity-lobes-r231.nii')
-    return segmentation_lobes_r231
 
     # segmentation_covi = mask.apply(model_covi)
     # tools.npy2nii(segmentation_covi, 'data/lung-entity-covi.nii')
 
+    segmentation_combine = segmentation_lobes_r231
     # segmentation_combine = segmentation_lobes_r231 + segmentation_lobes + segmentation_r231
-    # tools.npy2nii(segmentation_combine, 'data/log/lung-entity-combine.nii')
-    # return segmentation_combine
+    tools.npy2nii(segmentation_combine, 'data/log/lung-entity-combine.nii')
+    return segmentation_combine
 
 
 def get_roi(image: np.ndarray, atlas: np.ndarray) -> np.ndarray:
