@@ -18,21 +18,22 @@ def get_lung_atlas(image_path: str) -> np.ndarray:
     model_lobes = mask.get_model('unet', 'LTRCLobes')
     # model_covi = mask.get_model('unet', 'R231CovidWeb')
 
-    segmentation_r231 = mask.apply(input_image)  # default model is U-net(R231)
-    tools.npy2nii(segmentation_r231, 'data/log/lung-entity-r231.nii')
-
-    segmentation_lobes = mask.apply(input_image, model_lobes)
-    tools.npy2nii(segmentation_lobes, 'data/log/lung-entity-lobes.nii')
+    # segmentation_r231 = mask.apply(input_image)  # default model is U-net(R231)
+    # tools.npy2nii(segmentation_r231, 'data/log/lung-entity-r231.nii')
+    #
+    # segmentation_lobes = mask.apply(input_image, model_lobes)
+    # tools.npy2nii(segmentation_lobes, 'data/log/lung-entity-lobes.nii')
 
     segmentation_lobes_r231 = mask.apply_fused(input_image)
     tools.npy2nii(segmentation_lobes_r231, 'data/log/lung-entity-lobes-r231.nii')
+    return segmentation_lobes_r231
 
     # segmentation_covi = mask.apply(model_covi)
     # tools.npy2nii(segmentation_covi, 'data/lung-entity-covi.nii')
 
-    segmentation_combine = segmentation_lobes_r231 + segmentation_lobes + segmentation_r231
-    tools.npy2nii(segmentation_combine, 'data/log/lung-entity-combine.nii')
-    return segmentation_combine
+    # segmentation_combine = segmentation_lobes_r231 + segmentation_lobes + segmentation_r231
+    # tools.npy2nii(segmentation_combine, 'data/log/lung-entity-combine.nii')
+    # return segmentation_combine
 
 
 def get_roi(image: np.ndarray, atlas: np.ndarray) -> np.ndarray:
@@ -46,13 +47,13 @@ def get_roi(image: np.ndarray, atlas: np.ndarray) -> np.ndarray:
     return image * atlas
 
 
-def test_get_lung_atlas():
+def my_get_lung_atlas():
     # first chanel as slice axis, best performance
     lung_atlas = get_lung_atlas("data/lung-trans-201.vtk")
     tools.npy2nii(lung_atlas, 'data/output/lung-atlas.nii')
 
 
-def test_get_lung_roi():
+def my_get_lung_roi():
     # Get lung roi
     atlas = tools.get_arr_from_nii('data/log/lung-entity-combine.nii')
     image = tools.get_arr_from_nii('data/lung-trans-201.nii')
@@ -61,7 +62,5 @@ def test_get_lung_roi():
 
 
 if __name__ == '__main__':
-    # test_get_lung_atlas()
-    # test_get_lung_roi()
-    pass
-
+    my_get_lung_atlas()
+    my_get_lung_roi()
