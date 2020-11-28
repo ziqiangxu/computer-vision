@@ -1,4 +1,5 @@
-# computer-visual
+# computer-vision
+`CV` is computer vision instead of ~computer visual~
 
 计算机视觉
 
